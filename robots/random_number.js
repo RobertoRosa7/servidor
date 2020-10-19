@@ -1,28 +1,49 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
-
-const url_caixa =
-  "http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena/";
+const https = require("https");
+const cherrio = require("cheerio");
+const Format = require("../utils/format");
 
 class RandomNumber {
   constructor() {
     // this.saveFile().then(() => this.generatedTicket());ticket: [ '23', '14', '56', '6', '20', '28' ]
     // this.initialize();
-    const options = {
-      host: "http://loterias.caixa.gov.br",
-      path: "/wps/portal/loterias/landing/megasena/",
+    this.format = new Format();
+    // this.format.on("timeregressive", (value) => );
+
+    const $ = cherrio.load(this.readFile("index.html"));
+    const text = $(".AP7Wnd").text().trim();
+    const payload = {
+      content: /(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/
+        .exec(text)[0]
+        .split("-")
+        .map((v) => parseInt(v)),
+      create_at: new Date(),
+      date: this.format.formatDate(/(\d{2})\/(\d{2})\/(\d{2})/.exec(text)[0]),
+      concurso: /(\d{4})/.exec(text)[0],
     };
 
+    console.log(payload, new Date(payload['date']));
+  }
+
+  downloadURL() {
+    const options = {
+      host: "www.google.com",
+      path:
+        "/search?q=resultado+mega+sena&oq=resultado+mega+sena&aqs=chrome.0.69i59j0i131i433l3j0i433j0l3.3759j0j7&sourceid=chrome&ie=UTF-8",
+    };
     try {
-      http
-        .request(options, (response) => {
+      https
+        .get(options, (res) => {
           var str = "";
-          response.on("data", (chunk) => (str += chunk));
-          response.on("end", () => console.log(str));
+          res.on("data", (chunk) => (str += chunk));
+          res.on("end", async () => await this.saveAnyFile("index.html", str));
         })
         .end();
-    } catch (e) {}
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   async initialize() {
@@ -87,40 +108,22 @@ class RandomNumber {
     );
   }
 
-  // generatedTicket() {
-  //   const arr = [];
-  //   const repetidos = [];
-  //   const obj = {};
-
-  //   JSON.parse(this.readFile()).content.forEach((value, index, array) => {
-  //     value.forEach((v) => arr.push(v));
-  //     const t = array.map((v) => JSON.stringify(v));
-  //     if (t.indexOf(JSON.stringify(value)) !== index) repetidos.push(value);
-  //   });
-
-  //   arr.forEach((value) => {
-  //     if (!obj[value]) obj[value] = 0;
-  //     obj[value]++;
-  //   });
-
-  //   const ticket = {
-  //     ticket: Object.entries(obj)
-  //       .sort((a, b) => b[1] - a[1])
-  //       .map((el) => el[0])
-  //       .slice(0, 6),
-  //     occurrencies: Object.entries(obj)
-  //       .sort((a, b) => b[1] - a[1])
-  //       .slice(0, 6),
-  //     repetidos_list: repetidos.sort(),
-  //   };
-  //   console.log(ticket);
-  // }
+  saveAnyFile(filename, data) {
+    return new Promise((resolve) => {
+      fs.writeFile(
+        path.join(__dirname, `../data/${filename}`),
+        data,
+        "utf8",
+        (err, res) => (err ? console.log(err) : resolve(res))
+      );
+    });
+  }
 
   saveFile(num) {
     return new Promise(async (resolve, reject) => {
       console.log("Create file....");
 
-      const cache = this.readFile();
+      const cache = this.readFile("randomNumber.json");
       const payload = {};
       payload["content"] = await this.generateFinalList(num);
 
@@ -141,8 +144,8 @@ class RandomNumber {
     });
   }
 
-  readFile() {
-    const path2 = path.join(__dirname, "../data/randomNumber.json");
+  readFile(filename) {
+    const path2 = path.join(__dirname, `../data/${filename}`);
     try {
       if (fs.existsSync(path2)) {
         return fs.readFileSync(path2, "utf-8");
