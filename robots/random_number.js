@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
 
 const url_caixa =
   "http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena/";
@@ -7,7 +8,21 @@ const url_caixa =
 class RandomNumber {
   constructor() {
     // this.saveFile().then(() => this.generatedTicket());ticket: [ '23', '14', '56', '6', '20', '28' ]
-    this.initialize();
+    // this.initialize();
+    const options = {
+      host: "http://loterias.caixa.gov.br",
+      path: "/wps/portal/loterias/landing/megasena/",
+    };
+
+    try {
+      http
+        .request(options, (response) => {
+          var str = "";
+          response.on("data", (chunk) => (str += chunk));
+          response.on("end", () => console.log(str));
+        })
+        .end();
+    } catch (e) {}
   }
 
   async initialize() {
@@ -107,10 +122,10 @@ class RandomNumber {
 
       const cache = this.readFile();
       const payload = {};
-      payload["content"] = await this.generateFinalList(num)
+      payload["content"] = await this.generateFinalList(num);
 
       if (cache) {
-        const arr = JSON.parse(cache)
+        const arr = JSON.parse(cache);
         payload.forEach((v) => arr.push(v));
         payload = arr;
       }
@@ -128,12 +143,12 @@ class RandomNumber {
 
   readFile() {
     const path2 = path.join(__dirname, "../data/randomNumber.json");
-    try{
+    try {
       if (fs.existsSync(path2)) {
-        return fs.readFileSync(path2, 'utf-8');
+        return fs.readFileSync(path2, "utf-8");
       }
-    }catch(e) {
-      console.log(e)
+    } catch (e) {
+      console.log(e);
     }
   }
 
