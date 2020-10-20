@@ -49,8 +49,44 @@ class Format {
     const year = arrDate[0];
     const month = arrDate[1];
     const day = arrDate[2];
-    const y = new Date().getFullYear();
+    const ano = new Date()
+      .toISOString()
+      .substring(0, 10)
+      .split("-")[0]
+      .substring(0, 2);
+    let y;
+    if (ano === year) {
+      y = new Date().getFullYear();
+    } else {
+      let result = ano - year;
+      y = new Date().getFullYear() - result;
+    }
     return `${y}-${month}-${day}`;
+  }
+
+  extractTicket(text) {
+    return /(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/
+      .exec(text)[0]
+      .split("-")
+      .map((v) => parseInt(v));
+  }
+
+  extractDate(text) {
+    const date = /\((\d{2})\/(\d{2})\)/
+      .exec(text)[0]
+      .replace("(", "")
+      .replace(")", "")
+      .split("/");
+
+    return `${new Date()
+      .toISOString()
+      .substring(0, 10)
+      .split("-")[0]
+      .substring(0, 2)}/${date[1]}/${date[0]}`;
+  }
+
+  extractConc(text) {
+    return /(\d{4})/.exec(text)[0];
   }
 }
 
