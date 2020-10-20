@@ -10,45 +10,114 @@ class RandomNumber {
     // this.saveFile().then(() => this.generatedTicket());ticket: [ '23', '14', '56', '6', '20', '28' ]
     // this.initialize();
     this.format = new Format();
-    // this.format.on("timeregressive", (value) => );
-
-    const $ = cherrio.load(this.readFile("index.html"));
-    const text = $(".AP7Wnd").text().trim();
-    const payload = {
-      content: /(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/
-        .exec(text)[0]
-        .split("-")
-        .map((v) => parseInt(v)),
-      create_at: new Date(),
-      date: this.format.formatDate(/(\d{2})\/(\d{2})\/(\d{2})/.exec(text)[0]),
-      concurso: /(\d{4})/.exec(text)[0],
-    };
-
-    console.log(payload, new Date(payload['date']));
+    this.qtde = 10;
+    this.gen = true;
+    this.downloadURL();
   }
 
-  downloadURL() {
-    const options = {
-      host: "www.google.com",
-      path:
-        "/search?q=resultado+mega+sena&oq=resultado+mega+sena&aqs=chrome.0.69i59j0i131i433l3j0i433j0l3.3759j0j7&sourceid=chrome&ie=UTF-8",
-    };
+  async generateListSimulator(qtde) {
+    return new Promise(async resolve => {
+      const accu = [];
+      await Array(qtde)
+        .fill(0)
+        .map(() =>
+          this.createSimulateMegaPayload().then((res) => accu.push(res))
+        );
+        console.log(accu)
+      resolve(accu)
+    })
+  }
+
+  createPayloadMega() {
+    return new Promise((resolve) => {
+      const $ = cherrio.load(this.readFile("index.html"));
+      const text = $(".AP7Wnd").text().trim();
+      const payload = {};
+      payload["content"] = this.format.extractTicket(text);
+      payload["date"] = this.format.formatDate(this.format.extractDate(text));
+      payload["concurso"] = this.format.extractConc(text);
+      payload["create_at"] = new Date();
+      resolve(payload);
+    });
+  }
+
+  createSimulateMegaPayload() {
+    return new Promise((resolve) => {
+      const payload = {};
+      payload["content"] = this.otherWayToGenerateArray(6);
+      payload["date"] = new Date().toISOString().substring(0, 10);
+      payload["concurso"] = `${new Date()
+        .toISOString()
+        .substring(0, 10)
+        .split("-")[0]
+        .substring(0, 2)}${new Date().getMonth() + 1}`;
+      payload["create_at"] = new Date();
+      resolve(payload);
+    });
+  }
+
+  async downloadURL() {
+    const megaList = { mega: [] };
+    const cacheMega = this.readFile("mega.json");
+    if (cacheMega) {
+      const payload = JSON.parse(cacheMega);
+      if (payload["date"] !== new Date().toISOString().substring(0, 10)) {
+        console.log("Updating document(s) waiting...");
+        this.savePayloadMega(payload);
+      } else {
+        console.log("Document is updated!");
+        console.log(payload["mega"]);
+      }
+    } else {
+      console.log("Create document...");
+      this.savePayloadMega(megaList);
+    }
+  }
+
+  async savePayloadMega(megaList) {
     try {
-      https
-        .get(options, (res) => {
-          var str = "";
-          res.on("data", (chunk) => (str += chunk));
-          res.on("end", async () => await this.saveAnyFile("index.html", str));
-        })
-        .end();
+      if (this.gen) {
+        const res = await this.generateListSimulator(this.qtde);
+        res.forEach((value) => megaList["mega"].push(value));
+        this.writePayload(megaList);
+      } else {
+        await this.fetchURL();
+        megaList["mega"].push(await this.createPayloadMega());
+        this.writePayload(megaList);
+      }
     } catch (e) {
       console.log(e);
     }
   }
 
+  async writePayload(megaList) {
+    megaList["date"] = new Date().toISOString().substring(0, 10);
+    megaList["total_index"] = await this.createIndex(megaList["mega"]);
+    await this.saveAnyFile("mega.json", JSON.stringify(megaList));
+  }
+
+  fetchURL() {
+    return new Promise((resolve) => {
+      const options = {
+        host: "www.google.com",
+        path:
+          "/search?q=resultado+mega+sena&oq=resultado+mega+sena&aqs=chrome.0.69i59j0i131i433l3j0i433j0l3.3759j0j7&sourceid=chrome&ie=UTF-8",
+      };
+      https
+        .get(options, (res) => {
+          var str = "";
+          res.on("data", (chunk) => (str += chunk));
+          res.on("end", async () =>
+            resolve(await this.saveAnyFile("index.html", str))
+          );
+        })
+        .end();
+    });
+  }
+
   async initialize() {
     const payload = {};
-    payload["content"] = await this.saveFile(10);
+    payload["content"] = await this.saveFile(1);
     payload["total_index"] = await this.createIndex(payload["content"]);
     payload["repeated"] = await this.createUnitTicket(payload["content"]);
     payload["ticket"] = await this.createTicket(
@@ -128,9 +197,9 @@ class RandomNumber {
       payload["content"] = await this.generateFinalList(num);
 
       if (cache) {
-        const arr = JSON.parse(cache);
-        payload.forEach((v) => arr.push(v));
-        payload = arr;
+        const arr = JSON.parse(cache).content;
+        payload["content"].forEach((v) => arr.push(v));
+        payload["content"] = arr;
       }
 
       fs.writeFile(
