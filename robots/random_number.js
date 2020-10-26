@@ -16,16 +16,16 @@ class RandomNumber {
   }
 
   async generateListSimulator(qtde) {
-    return new Promise(async resolve => {
+    return new Promise(async (resolve) => {
       const accu = [];
       await Array(qtde)
         .fill(0)
         .map(() =>
           this.createSimulateMegaPayload().then((res) => accu.push(res))
         );
-        console.log(accu)
-      resolve(accu)
-    })
+      console.log(accu);
+      resolve(accu);
+    });
   }
 
   createPayloadMega() {
@@ -66,7 +66,7 @@ class RandomNumber {
         this.savePayloadMega(payload);
       } else {
         console.log("Document is updated!");
-        console.log(payload["mega"]);
+        this.filterTicket(JSON.parse(this.readFile("mega.json")));
       }
     } else {
       console.log("Create document...");
@@ -90,10 +90,24 @@ class RandomNumber {
     }
   }
 
+  async filterTicket(payload) {
+    const ticket = {};
+    ticket["ticket_total"] = await this.createIndex(payload["mega"]);
+    ticket["ticket_repeated"] = await this.createUnitTicket(
+      await this.createUnitList(payload["mega"])
+    );
+    ticket["tickets"] = await this.createTicket(
+      await this.createOccurrencies(await this.createUnitList(payload["mega"]))
+    );
+    console.log(ticket);
+  }
+
   async writePayload(megaList) {
     megaList["date"] = new Date().toISOString().substring(0, 10);
     megaList["total_index"] = await this.createIndex(megaList["mega"]);
-    await this.saveAnyFile("mega.json", JSON.stringify(megaList));
+    this.saveAnyFile("mega.json", JSON.stringify(megaList)).then(() =>
+      this.filterTicket(JSON.parse(this.readFile("mega.json")))
+    );
   }
 
   fetchURL() {
@@ -125,7 +139,6 @@ class RandomNumber {
         await this.createUnitList(payload["content"])
       )
     );
-    console.log(payload);
   }
 
   createIndex(payload = []) {
@@ -137,7 +150,7 @@ class RandomNumber {
     console.log("Create an unique list...");
     return new Promise((resolve) => {
       const arr = [];
-      payload.forEach((value) => value.forEach((v) => arr.push(v)));
+      payload.forEach((value) => arr.push(value.content));
       resolve(arr);
     });
   }
