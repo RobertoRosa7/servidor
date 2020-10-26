@@ -1,0 +1,23 @@
+{
+  "name": "servidor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RobertoRosa7/servidor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RobertoRosa7/servidor/issues"
+  },
+  "homepage": "https://github.com/RobertoRosa7/servidor#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3"
+  }
+}
